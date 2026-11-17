@@ -42,6 +42,7 @@ The build finds that profile and its signing identity by itself
 ## Build and install
 
 ```sh
+export XBOX_REV=307a42ee04ba58ccafbc231353629e67476af5cd   # OpenCE 387: see "Which engine"
 scripts/xbox/build-ios.sh --tvos
 xcrun devicectl list devices                       # your Apple TV's identifier
 xcrun devicectl device install app --device <identifier> ref/xbox-build/out/appletvos/HaloPadXbox.app
@@ -49,6 +50,22 @@ xcrun devicectl device install app --device <identifier> ref/xbox-build/out/appl
 
 The first build fetches and translates OpenCE and takes a while; see
 [XBOX-ENGINE.md](XBOX-ENGINE.md) for the engine checkout it uses.
+
+### Which engine
+
+`XBOX_REV` chooses the OpenCE engine, and every build needs it:
+
+- **OpenCE 387** (`307a42ee04ba58ccafbc231353629e67476af5cd`, above): the engine this Apple TV
+  build was mostly played and checked with, and the one with Steam Workshop.
+- **OpenCE 359**, HaloPad 0.3.16's engine (`config/xbox-release.json`), without Steam Workshop:
+
+  ```sh
+  export XBOX_REV=$(python3 -c "import json; print(json.load(open('config/xbox-release.json'))['revision'])")
+  ```
+
+Without `XBOX_REV`, the build uses `config/xbox-engine.lock.json`, an older experimental engine
+that has not been tried on Apple TV. 387 and 359 both use network version 44, so they play online
+with each other and with HaloPad 0.3.16.
 
 ## Add your game
 
@@ -76,7 +93,7 @@ xcrun devicectl device copy to --device <identifier> --domain-type appDataContai
 
 ## Steam Workshop
 
-With an OpenCE engine newer than HaloPad's pinned 359, the game has a Steam Workshop screen
+With OpenCE 387 ([Which engine](#which-engine)), the game has a Steam Workshop screen
 (Settings › Network Setup › Steam Workshop) for MCC maps. Sign in to Steam from the page's
 **Steam Workshop** section: your password is encrypted in the browser so that only your Apple TV
 can read it, and the Apple TV keeps only Steam's sign-in, in its Keychain. Steam Guard approval or

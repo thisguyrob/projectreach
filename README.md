@@ -1,5 +1,14 @@
 # HaloPad
 
+> **This is the `apple-tv` branch**, an experimental Apple TV build of the Xbox edition. It isn't part
+> of a HaloPad release. It adds a tvOS build, a web page on the local network for adding your disc's
+> maps and signing in to Steam, and Siri Remote menu navigation. You play with a game controller.
+> [docs/INSTALL-APPLE-TV.md](docs/INSTALL-APPLE-TV.md) covers building, signing and installing. Each
+> part is proposed upstream on its own
+> ([#56](https://github.com/chrissotraidis/projectreach/pull/56) to
+> [#60](https://github.com/chrissotraidis/projectreach/pull/60)). The rest of this README
+> describes HaloPad on iPhone, iPad and Mac.
+
 <p align="center">
   <strong>Play Halo: Combat Evolved on your iPhone, iPad or Mac.</strong><br>
   The original Xbox campaign, online matches of up to 128 players, and the PC community's Custom
