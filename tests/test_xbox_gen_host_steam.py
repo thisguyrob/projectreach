@@ -20,6 +20,10 @@ static int move_folder(char const *from, char const *to)
 }
 int host_steam_open(unsigned int root) { return open_at((char const *)GUEST_POINTER(root)); }
 static int waiting(void) { int cancelled; cancelled = steam.cancel_sign_in || !steam.open; return cancelled; }
+int host_steam_text_wanted(unsigned int initial, int initial_size, unsigned int secret)
+{ return 0; }
+void host_steam_text_typed(int kind, unsigned int text, int saved)
+{ }
 '''
 
 HASH = ''.join('void *p%d = (void *)(uintptr_t)%s;\n' % (i, name) for i, name in enumerate([
@@ -48,6 +52,17 @@ class GenHostSteamTests(unittest.TestCase):
         self.assertIn('cancelled = steam.cancel_sign_in || (!steam.open && !xg_admin_sign_in_open);', out)
         self.assertIn('static int xg_admin_sign_in_open;', out.split('#line 1 "steam_downloads.c"')[0])
         self.assertIn('int xg_steam_admin_sign_in(', out.split('#line 1 "xg_steam_admin.inc"')[1])
+
+    def test_text_entry_is_renamed_for_the_system_text_box(self):
+        out = gen.steam_downloads(DOWNLOADS)
+        self.assertIn('int xg_upstream_steam_text_wanted(unsigned int initial', out)
+        self.assertIn('void xg_upstream_steam_text_typed(int kind', out)
+        self.assertNotIn('int host_steam_text_wanted(', out)
+        self.assertNotIn('void host_steam_text_typed(', out)
+
+    def test_changed_text_entry_stops_generation(self):
+        with self.assertRaises(SystemExit):
+            gen.steam_downloads(DOWNLOADS.replace('int initial_size, unsigned int secret)', 'int size, unsigned int secret)'))
 
     def test_changed_sign_in_wait_stops_generation(self):
         with self.assertRaises(SystemExit):

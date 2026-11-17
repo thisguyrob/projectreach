@@ -1009,6 +1009,157 @@ void xg_ios_key(int scancode, int down)
 	hw_push(&e);
 }
 
+/* ---------- text typed for the game from a system text box (Steam's sign-in:
+ * xg_steam_host.m). The game's text field reads key events (a base key and
+ * the Shift modifier: sdl_platform.c's ascii_from_key), so each character
+ * becomes the key a US keyboard types it with. */
+
+static void push_key(SDL_Scancode scancode, SDL_Keycode key, SDL_Keymod mod, int down)
+{
+	SDL_Event e;
+	memset(&e, 0, sizeof(e));
+	e.key.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
+	e.key.windowID = 1;
+	e.key.scancode = scancode;
+	e.key.key = key;
+	e.key.mod = mod;
+	e.key.down = down;
+	hw_push(&e);
+}
+
+static void tap_key(SDL_Scancode scancode, SDL_Keycode key, int shift)
+{
+	SDL_Keymod mod = shift ? SDL_KMOD_LSHIFT : SDL_KMOD_NONE;
+	if (shift) push_key(SDL_SCANCODE_LSHIFT, SDLK_LSHIFT, SDL_KMOD_LSHIFT, 1);
+	push_key(scancode, key, mod, 1);
+	push_key(scancode, key, mod, 0);
+	if (shift) push_key(SDL_SCANCODE_LSHIFT, SDLK_LSHIFT, SDL_KMOD_NONE, 0);
+}
+
+/* an ASCII character as the key and Shift a US keyboard types it with; 0 if none */
+static int ascii_key(char c, SDL_Scancode *scancode, SDL_Keycode *key, int *shift)
+{
+	static const char unshifted[] = "-=[]\\;',./`", shifted[] = "_+{}|:\"<>?~", digits_shifted[] = ")!@#$%^&*(";
+	static const SDL_Scancode symbols[] = { SDL_SCANCODE_MINUS, SDL_SCANCODE_EQUALS, SDL_SCANCODE_LEFTBRACKET,
+		SDL_SCANCODE_RIGHTBRACKET, SDL_SCANCODE_BACKSLASH, SDL_SCANCODE_SEMICOLON, SDL_SCANCODE_APOSTROPHE,
+		SDL_SCANCODE_COMMA, SDL_SCANCODE_PERIOD, SDL_SCANCODE_SLASH, SDL_SCANCODE_GRAVE };
+	const char *at;
+	int digit = -1;
+	*shift = 0;
+	if (!c) return 0;
+	if (c >= 'a' && c <= 'z') { *scancode = SDL_SCANCODE_A + (c - 'a'); *key = (SDL_Keycode)c; return 1; }
+	if (c >= 'A' && c <= 'Z') { *scancode = SDL_SCANCODE_A + (c - 'A'); *key = (SDL_Keycode)(c + 32); *shift = 1; return 1; }
+	if (c == ' ') { *scancode = SDL_SCANCODE_SPACE; *key = SDLK_SPACE; return 1; }
+	if (c >= '0' && c <= '9') digit = c - '0';
+	else if ((at = strchr(digits_shifted, c))) { digit = (int)(at - digits_shifted); *shift = 1; }
+	if (digit >= 0)
+	{
+		*scancode = digit ? SDL_SCANCODE_1 + (digit - 1) : SDL_SCANCODE_0;
+		*key = (SDL_Keycode)('0' + digit);
+		return 1;
+	}
+	if ((at = strchr(unshifted, c))) { *scancode = symbols[at - unshifted]; *key = (SDL_Keycode)c; return 1; }
+	if ((at = strchr(shifted, c)))
+	{
+		*scancode = symbols[at - shifted];
+		*key = (SDL_Keycode)unshifted[at - shifted];
+		*shift = 1;
+		return 1;
+	}
+	return 0;
+}
+
+/* Replaces the field's first erase characters with text, then Enter. Returns
+ * how many characters had no key (not ASCII) and were left out. */
+static int type_text(const char *text, int erase)
+{
+	int skipped = 0;
+	SDL_Scancode scancode;
+	SDL_Keycode key;
+	int shift;
+	while (erase-- > 0) tap_key(SDL_SCANCODE_BACKSPACE, SDLK_BACKSPACE, 0);
+	for (; *text; text++)
+	{
+		if ((unsigned char)*text >= 0x80 && ((unsigned char)*text & 0xC0) == 0x80) continue; /* UTF-8 tail */
+		if (ascii_key(*text, &scancode, &key, &shift)) tap_key(scancode, key, shift);
+		else skipped++;
+	}
+	tap_key(SDL_SCANCODE_RETURN, SDLK_RETURN, 0);
+	return skipped;
+}
+
+/* Controllers reach the game neither while the text box is up nor for a moment
+ * after (the press that closed it). */
+static _Atomic int text_entry_active;
+static _Atomic long long text_entry_quiet_until;
+static UIAlertController *text_alert;
+
+static long long now_milliseconds(void) { return (long long)(CFAbsoluteTimeGetCurrent() * 1000.0); }
+
+static int text_entry_blocks_pads(void)
+{
+	return text_entry_active || now_milliseconds() < text_entry_quiet_until;
+}
+
+static void text_entry_finish(void)
+{
+	text_alert = nil;
+	text_entry_quiet_until = now_milliseconds() + 400;
+	text_entry_active = 0;
+}
+
+void xg_ios_request_text(const char *caption, const char *initial, int secret)
+{
+	NSString *title = @(caption ?: ""), *start = @(initial ?: "");
+	text_entry_active = 1;
+	dispatch_async(dispatch_get_main_queue(), ^{
+		UIViewController *top = game_view.window.rootViewController;
+		UIAlertController *alert;
+		if (text_alert)
+			[text_alert dismissViewControllerAnimated:NO completion:nil];
+		while (top.presentedViewController && top.presentedViewController != text_alert)
+			top = top.presentedViewController;
+		alert = [UIAlertController alertControllerWithTitle:title
+			message:@"Type with the remote or a controller, or on your iPhone." preferredStyle:UIAlertControllerStyleAlert];
+		[alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
+			field.text = start;
+			field.secureTextEntry = secret != 0;
+			field.autocorrectionType = UITextAutocorrectionTypeNo;
+			field.autocapitalizationType = UITextAutocapitalizationTypeNone;
+			field.spellCheckingType = UITextSpellCheckingTypeNo;
+			if (secret) field.textContentType = UITextContentTypePassword;
+		}];
+		[alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+			(void)action;
+			UITextField *field = alert.textFields.firstObject;
+			int skipped = type_text((field.text ?: @"").UTF8String, (int)start.length);
+			field.text = nil;
+			text_entry_finish();
+			if (skipped) xg_log("text entry: %d characters had no key and were left out", skipped);
+		}]];
+		[alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+			(void)action;
+			alert.textFields.firstObject.text = nil;
+			text_entry_finish();
+			tap_key(SDL_SCANCODE_ESCAPE, SDLK_ESCAPE, 0);
+		}]];
+		text_alert = alert;
+		[top presentViewController:alert animated:YES completion:nil];
+	});
+}
+
+/* the game took or dropped the field itself: close the text box if it is still up */
+void xg_ios_end_text(void)
+{
+	dispatch_async(dispatch_get_main_queue(), ^{
+		UIAlertController *alert = text_alert;
+		if (!alert) return;
+		alert.textFields.firstObject.text = nil;
+		text_entry_finish();
+		[alert dismissViewControllerAnimated:YES completion:nil];
+	});
+}
+
 void xg_ios_mouse_button(int button, int down)
 {
 	SDL_Event e;
@@ -1156,6 +1307,8 @@ int xh_host_sdl_gamepad_axis(uint32_t pad, int axis)
 	static float traced[6];
 	GCExtendedGamepad *g = hardware_pad(pad).extendedGamepad;
 	float values[6] = { 0 };
+	if (text_entry_blocks_pads())
+		return 0;
 	if (g)
 	{
 		values[SDL_GAMEPAD_AXIS_LEFTX] = g.leftThumbstick.xAxis.value;
@@ -1217,8 +1370,6 @@ static int hardware_button(GCExtendedGamepad *g, int button)
 enum { REMOTE_PRESS_MS = 60, CONTROLLER_QUIET_MS = 300 };
 static _Atomic unsigned remote_held, remote_latched;
 static _Atomic unsigned remote_generation[32];
-
-static long long now_milliseconds(void) { return (long long)(CFAbsoluteTimeGetCurrent() * 1000.0); }
 
 static long long remote_trace_ms(void)
 {
@@ -1345,7 +1496,10 @@ static int remote_button(int button)
 
 int xh_host_sdl_gamepad_button(uint32_t pad, int button)
 {
-	int pressed = hardware_button(hardware_pad(pad).extendedGamepad, button);
+	int pressed;
+	if (text_entry_blocks_pads())
+		return 0;
+	pressed = hardware_button(hardware_pad(pad).extendedGamepad, button);
 	if (pad == 1 && button >= 0 && button < 32)
 	{
 		pthread_mutex_lock(&pad_lock);

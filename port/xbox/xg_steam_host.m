@@ -5,6 +5,8 @@
  *
  *   host_logf              into HaloPad's log (xg_log)
  *   xg_mcc_share_publish   a finished download moved into mcc_maps (below)
+ *   host_steam_text_*      the text the Steam screen wants typed: a system
+ *                          text box (xg_ios.m)
  *   update_https_request   upstream's HTTPS client (port/linux/src/update.h):
  *                          NSURLSession with the system's certificate checks,
  *                          no redirect followed, the body bounded
@@ -50,6 +52,32 @@ void platform_log(const char *format, ...)
 	xg_log("%s", line);
 }
 
+/* ---------- the text Steam's screen wants typed
+ *
+ * The game opens a text field when the host asks for text (steam_downloads.c),
+ * then expects Android's keyboard through SDL text input, which it only starts
+ * with a touchscreen. These wrap upstream's two functions (renamed by
+ * gen-host-steam.py) to show a system text box instead (xg_ios.m). */
+
+int xg_upstream_steam_text_wanted(unsigned int initial, int initial_size, unsigned int secret);
+void xg_upstream_steam_text_typed(int kind, unsigned int text, int saved);
+char const *steam_downloads_text_caption(int kind);
+void xg_ios_request_text(const char *caption, const char *initial, int secret);
+void xg_ios_end_text(void);
+
+int xh_host_steam_text_wanted(uint32_t initial, int initial_size, uint32_t secret)
+{
+	int kind = xg_upstream_steam_text_wanted(initial, initial_size, secret);
+	if (kind && initial && secret)
+		xg_ios_request_text(steam_downloads_text_caption(kind), G(const char *, initial), *G(const int *, secret));
+	return kind;
+}
+
+void xh_host_steam_text_typed(int kind, uint32_t text, int saved)
+{
+	xg_ios_end_text();
+	xg_upstream_steam_text_typed(kind, text, saved);
+}
 /* ---------- moving a finished download into mcc_maps
  *
  * Upstream's posix_mcc_share_publish moves a folder into place only with

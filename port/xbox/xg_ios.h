@@ -27,6 +27,12 @@ void xg_ios_scroll_scoreboard(float points);
 void xg_ios_key(int scancode, int down);
 void xg_ios_mouse_button(int button, int down);
 void xg_ios_mouse_wheel(float steps);
+/* A system text box for text the game wants typed (Steam's sign-in); what is
+ * typed reaches the game's text field as key presses, then Enter. Controllers
+ * are kept from the game while it is up. Any thread. */
+void xg_ios_request_text(const char *caption, const char *initial, int secret);
+/* the game took or dropped the field: close the text box if it is up */
+void xg_ios_end_text(void);
 #if TARGET_OS_TV
 /* a Siri Remote press (UIPressType, and its UIKeyboardHIDUsage or 0) from the
  * view controller's pressesBegan/pressesEnded, merged into player 1 as a
