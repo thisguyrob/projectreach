@@ -336,6 +336,10 @@ $DEVICE_KEYS
 <key>NSBonjourServices</key><array>$BONJOUR</array>
 </dict></plist>
 EOF
+# Apple TV: the icon and Top Shelf image, from port/xbox/tvos-art when it has art
+case "$SDK" in appletv*)
+	python3 "$ROOT/scripts/xbox/tvos-art.py" "$ROOT/port/xbox/tvos-art" "$OUT/tvos-art-$SDK" "$APP" "$SDK" || exit 1 ;;
+esac
 [ "$SDK" = appletvos ] || cat > "$OUT/xbox.entitlements" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
