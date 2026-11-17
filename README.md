@@ -9,6 +9,52 @@
 > [#60](https://github.com/chrissotraidis/projectreach/pull/60)). The rest of this README
 > describes HaloPad on iPhone, iPad and Mac.
 
+## Install on Apple TV
+
+You build the app on your own Mac, sign it with your own Apple account and add your own Halo:
+Combat Evolved Xbox disc. Never share the app you build: it contains the translated game.
+
+**You need:** an Apple silicon Mac with Xcode 26 or later; an Apple TV 4K on tvOS 17.4 or later,
+on the same network; a game controller paired with the Apple TV; and your Xbox disc image (`.iso`
+or `.xiso`). Only the Apple TV 4K (3rd generation) on tvOS 27.2 has been tried.
+
+1. **Install the tools.** If `xcode-select -p` doesn't show Xcode, point it there first.
+
+   ```sh
+   brew install cmake ninja lld llvm
+   sudo xcode-select -s /Applications/Xcode.app
+   git clone -b apple-tv https://github.com/thisguyrob/projectreach.git
+   cd projectreach
+   ```
+
+2. **Pair the Apple TV with Xcode.** On the Apple TV, open Settings › Remotes and Devices › Remote
+   App and Devices. On the Mac, open Xcode › Window › Devices and Simulators, choose the Apple TV,
+   choose **Pair** and type the code it shows.
+
+3. **Let Xcode make a signing profile, once.** In Xcode, choose File › New › Project › tvOS ›
+   App. Under Signing & Capabilities, choose your team and a bundle identifier of your own (such as
+   `com.yourname.halopad`). Run it on the Apple TV, then delete the empty app.
+
+4. **Build and install.** The first build downloads and translates the OpenCE engine, which takes
+   a while and about 35 GB of free space.
+
+   ```sh
+   export XBOX_REV=307a42ee04ba58ccafbc231353629e67476af5cd   # OpenCE 387
+   scripts/xbox/build-ios.sh --tvos
+   xcrun devicectl list devices                               # your Apple TV's identifier
+   xcrun devicectl device install app --device <identifier> ref/xbox-build/out/appletvos/HaloPadXbox.app
+   ```
+
+5. **Add your game.** Open **HaloPad Xbox** on the Apple TV. It shows a web address, such as
+   `http://192.168.1.20:8080`. Open it in a browser on the same network and choose **Show a code on
+   the TV**. Type the code, then choose your disc image. The browser sends only the maps (about
+   1.9 GB) and the game starts by itself.
+
+Play with the controller. The Siri Remote moves through the menus but does nothing in a game. For
+Steam Workshop, sign in to Steam from the same web page. A free Apple account hasn't been tried;
+apps it signs stop opening after 7 days. [docs/INSTALL-APPLE-TV.md](docs/INSTALL-APPLE-TV.md) has
+the details, other engine choices and the limits.
+
 <p align="center">
   <strong>Play Halo: Combat Evolved on your iPhone, iPad or Mac.</strong><br>
   The original Xbox campaign, online matches of up to 128 players, and the PC community's Custom
