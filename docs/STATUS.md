@@ -61,6 +61,12 @@ covers signing, installing and adding the maps.
 - Data and saves live in `Library/Caches`, the only folders tvOS apps may write. A 1.5 GiB test
   set there survived a relaunch and two Apple TV restarts; tvOS may still purge it when storage
   runs low.
+- Siri Remote, menus only: its arrows (clicked or swiped) move, a middle click chooses, Back goes
+  back, Play/Pause is Start; in a game it does nothing (the game reports when a menu is up). With
+  OpenCE 387 on the Apple TV: main menu, pause menu and QUIT driven with the remote; remote presses
+  during a level ignored; one step per click; a controller's stick no longer opens chat while
+  walking, and does not double-step in menus. With OpenCE 359: the main menu driven with the
+  remote; a level was not loaded in that run.
 ## Steam Workshop host for OpenCE 387 and later (not in a release)
 
 OpenCE builds after 359 import 30 more host functions: the Steam Workshop screen (24) and MCC

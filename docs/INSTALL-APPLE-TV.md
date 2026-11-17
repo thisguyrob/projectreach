@@ -88,4 +88,6 @@ the game's own Steam screen instead.
 
 - tvOS may delete an app's cached files when the Apple TV runs low on storage. The maps and saves
   live there (tvOS apps may write nowhere else); the app then asks for your disc again.
-- Play with a controller: the Siri Remote does not navigate the menus.
+- Play with a controller. The Siri Remote works only in menus (the main menu, the pause menu,
+  settings): swipe or click its edges to move, click the middle to choose, Back to go back. In a
+  game it does nothing.

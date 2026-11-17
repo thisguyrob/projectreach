@@ -302,7 +302,7 @@ appletvos|appletvsimulator)
 	# Apple TV: the game is played with a controller (an extended gamepad).
 	BONJOUR='<string>_halopad._udp</string><string>_http._tcp</string>'     # and the web page (xg_admin.m)
 	DEVICE_KEYS='<key>UIDeviceFamily</key><array><integer>3</integer></array>
-<key>GCSupportedGameControllers</key><array><dict><key>ProfileName</key><string>ExtendedGamepad</string></dict></array>'
+<key>GCSupportedGameControllers</key><array><dict><key>ProfileName</key><string>ExtendedGamepad</string></dict><dict><key>ProfileName</key><string>MicroGamepad</string></dict></array>'
 	if [ "$SDK" = appletvos ]; then
 		# A development profile Xcode made, and the keychain identity it names
 		# (tvos-signing.py); it also writes the entitlements.
